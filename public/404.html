@@ -2,17 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>39Letters</title>
 
     <script>
-      sessionStorage.redirect =
-        location.pathname +
-        location.search +
-        location.hash
+      const base = '/39Letters'
+      const path = location.pathname + location.search + location.hash
 
-      location.replace('/39Letters/')
+      sessionStorage.setItem('spa-redirect', path)
+
+      location.replace(base + '/')
     </script>
   </head>
+
   <body></body>
 </html>

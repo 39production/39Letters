@@ -1425,36 +1425,6 @@ export function AbiExperience() {
                   },
                 )
 
-                gsap.to(
-                  card.querySelector(
-                    '.memory-image img',
-                  ),
-                  {
-                    yPercent:
-                      index %
-                        2 ===
-                      0
-                        ? -8
-                        : 8,
-
-                    ease:
-                      'none',
-
-                    scrollTrigger:
-                      {
-                        trigger:
-                          card,
-
-                        start:
-                          'top bottom',
-
-                        end:
-                          'bottom top',
-
-                        scrub: true,
-                      },
-                  },
-                )
               },
             )
 
@@ -1564,6 +1534,10 @@ export function AbiExperience() {
                     ease:
                       'power2.out',
 
+                    delay:
+                      index *
+                      0.04,
+
                     scrollTrigger:
                       {
                         trigger:
@@ -1576,10 +1550,6 @@ export function AbiExperience() {
                           'top 62%',
 
                         scrub: 1,
-
-                        delay:
-                          index *
-                          0.04,
                       },
                   },
                 )

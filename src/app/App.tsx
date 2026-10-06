@@ -11,7 +11,7 @@ import { BayuExperience } from '../letters/02-bayu/BayuExperience'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         {/* 39LETTERS */}
 
