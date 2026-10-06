@@ -5,21 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08050a" />
     <title>39Letters</title>
-  </head>
-
-  <body>
-    <div id="root"></div>
 
     <script>
       (() => {
         const redirect = sessionStorage.getItem('spa-redirect')
 
-        if (redirect) {
+        if (!redirect) return
+
+        sessionStorage.removeItem('spa-redirect')
+
+        try {
+          const data = JSON.parse(redirect)
+
+          const target =
+            data.path +
+            (data.search || '') +
+            (data.hash || '')
+
+          window.history.replaceState(
+            null,
+            '',
+            target
+          )
+        } catch {
           sessionStorage.removeItem('spa-redirect')
-          history.replaceState(null, '', redirect)
         }
       })()
     </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
 
     <script type="module" src="/src/main.tsx"></script>
   </body>

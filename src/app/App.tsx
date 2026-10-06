@@ -11,10 +11,8 @@ import { BayuExperience } from '../letters/02-bayu/BayuExperience'
 
 function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter basename="/39Letters">
       <Routes>
-        {/* 39LETTERS */}
-
         <Route
           path="/l/01"
           element={<AbiExperience />}
@@ -24,8 +22,6 @@ function App() {
           path="/l/02"
           element={<BayuExperience />}
         />
-
-        {/* Fallback */}
 
         <Route
           path="*"
