@@ -1,40 +1,21 @@
 import React from 'react'
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-} from 'react-router-dom'
 
 import { AbiExperience } from '../letters/01-abi/AbiExperience'
 import { BayuExperience } from '../letters/02-bayu/BayuExperience'
 
 function App() {
-  return (
-    <BrowserRouter basename="/39Letters">
-      <Routes>
-        <Route
-          path="/l/01"
-          element={<AbiExperience />}
-        />
+  const pathname = window.location.pathname
 
-        <Route
-          path="/l/02"
-          element={<BayuExperience />}
-        />
+  const route =
+    pathname
+      .replace(/^\/39Letters/, '')
+      .replace(/\/+$/, '') || '/'
 
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to="/l/01"
-              replace
-            />
-          }
-        />
-      </Routes>
-    </BrowserRouter>
-  )
+  if (route === '/l/02') {
+    return <BayuExperience />
+  }
+
+  return <AbiExperience />
 }
 
 export default App

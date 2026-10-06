@@ -35,9 +35,14 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Prepare GitHub Pages SPA fallback
+      - name: Create route pages
         run: |
-          cp dist/index.html dist/404.html
+          mkdir -p dist/l/01
+          mkdir -p dist/l/02
+
+          cp dist/index.html dist/l/01/index.html
+          cp dist/index.html dist/l/02/index.html
+
           touch dist/.nojekyll
 
       - name: Setup Pages
