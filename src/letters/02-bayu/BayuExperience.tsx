@@ -1322,10 +1322,37 @@ export function BayuExperience() {
     setPage,
   ] = useState(0)
 
+  // On phones each side of the desktop spread becomes its own physical page.
+  // 0 = left page, 1 = right page.
+  const [
+    mobileSide,
+    setMobileSide,
+  ] = useState<0 | 1>(0)
+
+  const [
+    isMobile,
+    setIsMobile,
+  ] = useState(false)
+
   const [
     sound,
     setSound,
   ] = useState(true)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 680px)')
+
+    const update = () => {
+      setIsMobile(media.matches)
+    }
+
+    update()
+    media.addEventListener('change', update)
+
+    return () => {
+      media.removeEventListener('change', update)
+    }
+  }, [])
 
   /* =======================================================
      BACKGROUND MUSIC
@@ -1340,6 +1367,11 @@ export function BayuExperience() {
     flipping,
     setFlipping,
   ] = useState(false)
+
+  const [
+    flipDirection,
+    setFlipDirection,
+  ] = useState<'forward' | 'backward'>('forward')
 
   const bookRef =
     useRef<HTMLDivElement>(
@@ -1403,57 +1435,96 @@ export function BayuExperience() {
 
   const nextPage =
     () => {
-      if (
-        flipping ||
-        page >=
-          pages.length - 1
-      ) {
+      if (flipping) {
         return
       }
 
-      setFlipping(true)
+      if (isMobile) {
+        const lastMobilePage =
+          pages.length * 2 - 1
+        const currentMobilePage =
+          page * 2 + mobileSide
 
-      setPage(
-        (current) =>
+        if (currentMobilePage >= lastMobilePage) {
+          return
+        }
+
+        setFlipDirection('forward')
+        setFlipping(true)
+        setMobileSide((side) => {
+          if (side === 0) {
+            return 1
+          }
+
+          setPage((current) =>
+            Math.min(
+              current + 1,
+              pages.length - 1,
+            ),
+          )
+          return 0
+        })
+      } else {
+        if (page >= pages.length - 1) {
+          return
+        }
+
+        setFlipDirection('forward')
+        setFlipping(true)
+        setPage((current) =>
           Math.min(
             current + 1,
             pages.length - 1,
           ),
-      )
+        )
+      }
 
-      window.setTimeout(
-        () => {
-          setFlipping(false)
-        },
-        850,
-      )
+      window.setTimeout(() => {
+        setFlipping(false)
+      }, 850)
     }
 
   const previousPage =
     () => {
-      if (
-        flipping ||
-        page <= 0
-      ) {
+      if (flipping) {
         return
       }
 
-      setFlipping(true)
+      if (isMobile) {
+        const currentMobilePage =
+          page * 2 + mobileSide
 
-      setPage(
-        (current) =>
-          Math.max(
-            current - 1,
-            0,
-          ),
-      )
+        if (currentMobilePage <= 0) {
+          return
+        }
 
-      window.setTimeout(
-        () => {
-          setFlipping(false)
-        },
-        850,
-      )
+        setFlipDirection('backward')
+        setFlipping(true)
+        setMobileSide((side) => {
+          if (side === 1) {
+            return 0
+          }
+
+          setPage((current) =>
+            Math.max(current - 1, 0),
+          )
+          return 1
+        })
+      } else {
+        if (page <= 0) {
+          return
+        }
+
+        setFlipDirection('backward')
+        setFlipping(true)
+        setPage((current) =>
+          Math.max(current - 1, 0),
+        )
+      }
+
+      window.setTimeout(() => {
+        setFlipping(false)
+      }, 850)
     }
 
   /*
@@ -4723,6 +4794,399 @@ export function BayuExperience() {
               auto !important;
           }
         }
+
+        /* =================================================
+           MOBILE — ONE PHYSICAL PAGE AT A TIME
+           The desktop spread becomes a portrait book page.
+           Swipe left/right or use the controls to turn pages.
+        ================================================= */
+
+        @media (max-width: 680px) {
+          html,
+          body,
+          #root {
+            width: 100%;
+            min-height: 100%;
+            overflow-x: hidden;
+          }
+
+          .bayu-experience {
+            min-height: 100svh;
+            height: 100svh;
+            overflow: hidden;
+            touch-action: pan-y;
+          }
+
+          .world-canvas {
+            position: fixed;
+            inset: 0;
+          }
+
+          .experience {
+            width: 100%;
+            min-height: 100svh;
+            height: 100svh;
+            padding: 58px 12px 92px;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+          }
+
+          .experience::before {
+            inset: 2.5%;
+            border-radius: 24px;
+          }
+
+          .book-wrapper {
+            width: min(94vw, 470px);
+            height: min(78svh, 720px);
+            min-height: 0;
+            max-height: calc(100svh - 155px);
+            perspective: 1800px;
+          }
+
+          .book {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+          }
+
+          .book-shell {
+            border-radius: 9px;
+          }
+
+          .book-spread {
+            inset: 9px;
+            display: block;
+            overflow: hidden;
+            border-radius: 5px;
+            background: #f7ead0;
+          }
+
+          .book-spread::before {
+            display: none;
+          }
+
+          .book-page {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            border: 0 !important;
+          }
+
+          .book-spread.mobile-left-active .book-page.left,
+          .book-spread.mobile-right-active .book-page.right {
+            display: block;
+            animation: mobilePageAppear .48s cubic-bezier(.16,1,.3,1) both;
+          }
+
+          @keyframes mobilePageAppear {
+            from {
+              opacity: 0;
+              transform: translateX(18px) scale(.985);
+              filter: blur(2px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0) scale(1);
+              filter: blur(0);
+            }
+          }
+
+          .book-page.left .page-no,
+          .book-page.right .page-no {
+            left: auto;
+            right: 20px;
+            bottom: 14px;
+          }
+
+          .page-inner {
+            height: 100%;
+            padding: 34px 25px 58px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+          }
+
+          .page-inner::-webkit-scrollbar {
+            width: 3px;
+          }
+
+          .page-label {
+            margin-bottom: 11px;
+            font-size: 8px;
+            letter-spacing: .22em;
+          }
+
+          .page-title {
+            margin-bottom: 20px;
+            font-size: clamp(28px, 8vw, 40px);
+            line-height: 1.03;
+          }
+
+          .page-text {
+            font-size: 15px;
+            line-height: 1.82;
+          }
+
+          .page-text + .page-text {
+            margin-top: 21px;
+          }
+
+          .quote-mark {
+            right: 18px;
+            top: 18px;
+            font-size: 82px;
+          }
+
+          .section-memory {
+            margin: 20px 0 7px;
+          }
+
+          .section-memory .memory-photo {
+            width: min(100%, 360px);
+            min-height: 165px;
+          }
+
+          .memory-photo {
+            min-height: 150px;
+            border-width: 6px;
+          }
+
+          .memory-photo img {
+            min-height: 150px;
+          }
+
+          .memory-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+          }
+
+          .bracelet-wrap {
+            min-height: 260px;
+            margin-top: 8px;
+          }
+
+          .bracelet-wrap img {
+            min-height: 260px;
+          }
+
+          .bracelet-note {
+            font-size: 12px;
+            line-height: 1.75;
+          }
+
+          .letter-page {
+            justify-content: flex-start;
+          }
+
+          .letter-highlight {
+            margin: 20px 0;
+            padding: 19px 18px 19px 20px;
+          }
+
+          .ending-page {
+            min-height: 100%;
+            padding: 25px 0 45px;
+            justify-content: center;
+          }
+
+          .ending-symbol {
+            width: 88px;
+            height: 88px;
+            margin-bottom: 24px;
+            font-size: 28px;
+          }
+
+          .ending-page h2 {
+            font-size: clamp(34px, 9vw, 48px);
+          }
+
+          .dragon-page {
+            min-height: 100%;
+          }
+
+          .dragon-page .dragon-canvas {
+            height: 210px;
+            min-height: 210px;
+            flex-basis: 210px;
+          }
+
+          .dragon-page .dragon-page-copy {
+            padding: 10px 23px 42px;
+          }
+
+          .dragon-page .dragon-page-copy > h2 {
+            font-size: 31px;
+          }
+
+          .dragon-page .ending-letter {
+            max-height: none;
+            overflow: visible;
+            margin-top: 16px;
+          }
+
+          .dragon-page .ending-letter p {
+            font-size: 13px;
+            line-height: 1.8;
+          }
+
+          .ending-final-message {
+            margin-top: 22px;
+          }
+
+          .ending-book-photo {
+            width: min(94%, 290px);
+          }
+
+          .book-dragon-layer {
+            inset: 7px;
+            opacity: .5;
+          }
+
+          .book-dragon-layer canvas {
+            opacity: .75;
+          }
+
+          .page-transition {
+            inset: 9px;
+            overflow: hidden;
+          }
+
+          .flip-page {
+            width: 100%;
+            left: 0 !important;
+            right: auto !important;
+            transform-origin: center center !important;
+          }
+
+          .flip-page.forward {
+            animation-name: mobileFlipForward;
+          }
+
+          .flip-page.backward {
+            animation-name: mobileFlipBackward;
+          }
+
+          @keyframes mobileFlipForward {
+            0% {
+              transform: rotateY(0deg) scaleX(1);
+              opacity: 1;
+            }
+            55% {
+              transform: rotateY(-90deg) scaleX(.98);
+              opacity: .96;
+            }
+            100% {
+              transform: rotateY(-180deg) scaleX(1);
+              opacity: 0;
+            }
+          }
+
+          @keyframes mobileFlipBackward {
+            0% {
+              transform: rotateY(0deg) scaleX(1);
+              opacity: 1;
+            }
+            55% {
+              transform: rotateY(90deg) scaleX(.98);
+              opacity: .96;
+            }
+            100% {
+              transform: rotateY(180deg) scaleX(1);
+              opacity: 0;
+            }
+          }
+
+          .book-controls {
+            bottom: max(14px, env(safe-area-inset-bottom));
+            gap: 9px;
+            padding: 7px 9px;
+          }
+
+          .book-controls button {
+            width: 42px;
+            height: 42px;
+            font-size: 16px;
+          }
+
+          .book-counter {
+            min-width: 74px;
+            font-size: 9px;
+          }
+
+          .sound-button {
+            top: max(12px, env(safe-area-inset-top));
+            right: 12px;
+            padding: 8px 11px;
+            font-size: 8px;
+          }
+
+          .made-by {
+            display: none;
+          }
+
+          .intro-screen {
+            padding: max(22px, env(safe-area-inset-top)) 18px max(25px, env(safe-area-inset-bottom));
+          }
+
+          .intro-content {
+            width: 100%;
+            min-height: 100svh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            text-align: center;
+          }
+
+          .flying-book {
+            order: 1;
+            width: min(78vw, 340px);
+            margin: -5px auto 0;
+          }
+
+          .intro-copy {
+            order: 2;
+            padding: 0;
+            margin-top: -4px;
+          }
+
+          .intro-eyebrow {
+            margin-bottom: 12px;
+            font-size: 9px;
+            letter-spacing: .28em;
+          }
+
+          .intro-content h1 {
+            font-size: clamp(48px, 15vw, 72px);
+          }
+
+          .intro-subtitle {
+            max-width: 310px;
+            margin: 18px auto 0;
+            font-size: 14px;
+            line-height: 1.7;
+          }
+
+          .enter-button {
+            margin-top: 23px;
+            padding: 13px 20px;
+            font-size: 10px;
+          }
+
+          .intro-dragon {
+            inset: -5% -18%;
+            opacity: .78;
+          }
+
+          .intro-screen::before {
+            inset: 3%;
+            border-radius: 24px;
+          }
+        }
         `}
       </style>
 
@@ -4888,7 +5352,15 @@ export function BayuExperience() {
 
               <div className="book-shell" />
 
-              <div className="book-spread">
+              <div
+                className={`book-spread ${
+                  isMobile
+                    ? mobileSide === 0
+                      ? 'mobile-left-active'
+                      : 'mobile-right-active'
+                    : ''
+                }`}
+              >
                 {/* =========================================
                     LEFT PAGE
                 ========================================= */}
@@ -5309,12 +5781,7 @@ export function BayuExperience() {
                   key={`flip-${page}-${flipping}`}
                 >
                   <div
-                    className={`flip-page ${
-                      page >
-                      0
-                        ? 'forward'
-                        : 'backward'
-                    }`}
+                    className={`flip-page ${flipDirection}`}
                   />
                 </div>
               )}
@@ -5332,8 +5799,10 @@ export function BayuExperience() {
                 previousPage
               }
               disabled={
-                page === 0 ||
-                flipping
+                flipping ||
+                (isMobile
+                  ? page * 2 + mobileSide <= 0
+                  : page === 0)
               }
               aria-label="Previous page"
             >
@@ -5342,14 +5811,18 @@ export function BayuExperience() {
 
             <div className="book-counter">
               {String(
-                page + 1,
+                isMobile
+                  ? page * 2 + mobileSide + 1
+                  : page + 1,
               ).padStart(
                 2,
                 '0',
               )}
               {' / '}
               {String(
-                pages.length,
+                isMobile
+                  ? pages.length * 2
+                  : pages.length,
               ).padStart(
                 2,
                 '0',
@@ -5362,10 +5835,10 @@ export function BayuExperience() {
                 nextPage
               }
               disabled={
-                page ===
-                  pages.length -
-                    1 ||
-                flipping
+                flipping ||
+                (isMobile
+                  ? page * 2 + mobileSide >= pages.length * 2 - 1
+                  : page === pages.length - 1)
               }
               aria-label="Next page"
             >
