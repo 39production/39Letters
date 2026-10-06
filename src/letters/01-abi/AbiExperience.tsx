@@ -38,7 +38,7 @@ gsap.registerPlugin(
 ========================================================= */
 
 const PHOENIX_PATH =
-  '/assets/01-abi/phoenix/phoenix.glb'
+  `${import.meta.env.BASE_URL}assets/01-abi/phoenix/phoenix.glb`
 
 /* =========================================================
    MEMORIES
