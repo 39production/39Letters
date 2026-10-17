@@ -12,7 +12,6 @@ import {
 } from '@react-three/fiber'
 
 import {
-  Environment,
   Sparkles,
   Stars,
   useGLTF,
@@ -34,11 +33,27 @@ gsap.registerPlugin(
 )
 
 /* =========================================================
-   PHOENIX ASSET
+   LOCAL ASSET PATHS
+   Keep all images in public/assets/01-abi/photos as JPEG files.
+   BASE_URL support keeps paths working on local Vite and GitHub Pages.
 ========================================================= */
 
+const assetUrl = (path: string) =>
+  `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
+
+/* EXISTING PHOTO ASSETS in public/assets/01-abi/photos/:
+   memory-01.jpeg through memory-12.jpeg
+   bracelet.jpeg
+   Book pages use the existing memory-XX.jpeg URLs; no book-XX files are required.
+*/
+
 const PHOENIX_PATH =
-  `${import.meta.env.BASE_URL}assets/01-abi/phoenix/phoenix.glb`
+  assetUrl('assets/01-abi/phoenix/phoenix.glb')
+
+// Place your MP3 at public/assets/abi-01/audio/background.mp3.
+// If your file has a different name, change only this path.
+const BACKGROUND_AUDIO_PATH =
+  assetUrl('assets/01-abi/audio/background.mp3')
 
 /* =========================================================
    MEMORIES
@@ -47,7 +62,7 @@ const PHOENIX_PATH =
 const memories = [
   {
     image:
-      '/assets/01-abi/photos/memory-01.webp',
+      assetUrl('assets/01-abi/photos/memory-01.jpeg'),
 
     caption:
       'Some ordinary days become the memories we keep the longest.',
@@ -58,7 +73,7 @@ const memories = [
 
   {
     image:
-      '/assets/01-abi/photos/memory-02.webp',
+      assetUrl('assets/01-abi/photos/memory-02.png'),
 
     caption:
       'The moments that never asked to become important somehow did.',
@@ -69,7 +84,7 @@ const memories = [
 
   {
     image:
-      '/assets/01-abi/photos/memory-03.webp',
+      assetUrl('assets/01-abi/photos/memory-03.jpeg'),
 
     caption:
       'Somewhere along the way, you became family.',
@@ -77,7 +92,25 @@ const memories = [
     detail:
       'Awalnya hanya teman kampus. Entah bagaimana, sekarang rasanya kamu sudah seperti adik, bahkan kadang seperti kakak.',
   },
+  { image: assetUrl('assets/01-abi/photos/memory-04.jpeg'), caption: 'A little moment kept safe between these pages.', detail: 'One more piece of our story, kept here without needing a special occasion.' },
+  { image: assetUrl('assets/01-abi/photos/memory-05.jpeg'), caption: 'Proof that ordinary days can become precious.', detail: 'The memories that stay are not always the grand ones; sometimes they are simply ours.' },
+  { image: assetUrl('assets/01-abi/photos/memory-06.jpeg'), caption: 'A snapshot from a chapter I will always remember.', detail: 'A different frame, a different moment, and another reason to be grateful.' },
+  { image: assetUrl('assets/01-abi/photos/memory-07.jpeg'), caption: 'Another page from our little collection of moments.', detail: 'May this picture bring back the warmth of the day it was made.' },
+  { image: assetUrl('assets/01-abi/photos/memory-08.jpeg'), caption: 'A memory that deserves its own little frame.', detail: 'Not every memory needs a long explanation to mean something.' },
+  { image: assetUrl('assets/01-abi/photos/memory-09.jpeg'), caption: 'A different day, a different story to keep.', detail: 'This page belongs to another moment in our friendship.' },
+  { image: assetUrl('assets/01-abi/photos/memory-10.jpeg'), caption: 'One more memory for the days we miss each other.', detail: 'When distance makes meeting harder, these moments can help us remember.' },
+  { image: assetUrl('assets/01-abi/photos/memory-11.jpeg'), caption: 'A small piece of a story still being written.', detail: 'There are still places to go, stories to tell, and memories to make.' },
+  { image: assetUrl('assets/01-abi/photos/memory-12.jpeg'), caption: 'A page for a moment I do not want to forget.', detail: 'This is one of the many little things that make this friendship matter.' },
 ]
+
+
+// The storybook has its own separate photo sequence so it never repeats
+// the photos used outside the book. Add these files to public/assets/01-abi/photos/:
+// memory-13.jpeg through memory-30.jpeg.
+const bookMemories = Array.from({ length: 18 }, (_, index) => ({
+  image: assetUrl(`assets/01-abi/photos/memory-${String(index + 13).padStart(2, '0')}.jpeg`),
+  caption: `A memory kept just for this chapter, fragment ${String(index + 1).padStart(2, '0')}.`,
+}))
 
 /* =========================================================
    STAR SEA
@@ -1093,9 +1126,8 @@ function World({
         <Phoenix />
       </Suspense>
 
-      <Environment
-        preset="night"
-      />
+      {/* Local lights and ember particles are used instead of a remote HDRI,
+          so the Phoenix scene remains available without an internet connection. */}
     </>
   )
 }
@@ -1189,11 +1221,18 @@ export function AbiExperience() {
   const [
     sound,
     setSound,
-  ] = useState(false)
+  ] = useState(true)
+
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   const [
     activeMemory,
     setActiveMemory,
+  ] = useState(0)
+
+  const [
+    activePhoenixChapter,
+    setActivePhoenixChapter,
   ] = useState(0)
 
   const stageRef =
@@ -1216,8 +1255,44 @@ export function AbiExperience() {
       null,
     )
 
+  const renderMemoryCard = (index: number) => {
+    const memory = memories[index]
+    if (!memory) return null
+    return (
+      <article
+        className={`memory-card memory-inline-card memory-card-${index + 1} ${activeMemory === index ? 'is-active' : ''}`}
+        key={memory.image}
+      >
+        <div className="memory-image">
+          <div className="memory-glow" />
+          <img
+            src={memory.image}
+            alt={memory.caption}
+            loading="lazy"
+            onError={(event) => { event.currentTarget.style.display = 'none' }}
+          />
+          <div className="photo-placeholder">
+            <span>PHOTO {String(index + 1).padStart(2, '0')}</span>
+            <small>Place your memory here</small>
+          </div>
+          <div className="photo-number">{String(index + 1).padStart(2, '0')}</div>
+        </div>
+        <div className="memory-caption">
+          <span>MEMORY {String(index + 1).padStart(2, '0')}</span>
+          <p>{memory.caption}</p>
+          <small>{memory.detail}</small>
+        </div>
+      </article>
+    )
+  }
+
   const enterExperience =
     () => {
+      // User interaction is the reliable fallback when the browser blocks autoplay.
+      if (audioRef.current && sound) {
+        void audioRef.current.play().catch(() => {})
+      }
+
       if (
         !introRef.current
       ) {
@@ -1310,6 +1385,26 @@ export function AbiExperience() {
         '-=0.45',
       )
     }
+
+  /* =======================================================
+     BACKGROUND MUSIC
+     Music is enabled by default and attempts to start on the intro.
+     If browser autoplay policy blocks it, enterExperience() retries
+     playback directly from the visitor's intro-button click.
+  ======================================================= */
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    if (sound) {
+      void audio.play().catch(() => {
+        // Keep sound enabled; retry when the visitor taps the intro button.
+      })
+    } else {
+      audio.pause()
+    }
+  }, [sound])
 
   /* =======================================================
      GSAP
@@ -1472,89 +1567,21 @@ export function AbiExperience() {
               },
             )
 
-          gsap.fromTo(
-            '.letter-panel',
-            {
-              clipPath:
-                'inset(0 0 100% 0)',
-
-              opacity: 0,
-
-              y: 80,
-            },
-            {
-              clipPath:
-                'inset(0 0 0% 0)',
-
-              opacity: 1,
-
-              y: 0,
-
-              ease:
-                'power3.out',
-
-              scrollTrigger:
-                {
-                  trigger:
-                    '.letter-section',
-
-                  start:
-                    'top 78%',
-
-                  end:
-                    'top 25%',
-
-                  scrub: 1.3,
-                },
-            },
-          )
-
-          gsap.utils
-            .toArray<HTMLElement>(
-              '.letter-paragraph',
-            )
-            .forEach(
-              (
-                paragraph,
-                index,
-              ) => {
-                gsap.fromTo(
-                  paragraph,
-                  {
-                    opacity: 0,
-                    y: 28,
-                    filter:
-                      'blur(8px)',
-                  },
-                  {
-                    opacity: 1,
-                    y: 0,
-                    filter:
-                      'blur(0px)',
-                    ease:
-                      'power2.out',
-
-                    delay:
-                      index *
-                      0.04,
-
-                    scrollTrigger:
-                      {
-                        trigger:
-                          paragraph,
-
-                        start:
-                          'top 88%',
-
-                        end:
-                          'top 62%',
-
-                        scrub: 1,
-                      },
-                  },
-                )
-              },
-            )
+          // LETTER VISIBILITY FIX:
+          // Keep the letter readable even when ScrollTrigger does not refresh
+          // correctly (for example after opening on mobile or jumping to a scene).
+          // Decorative reveal animations must never leave the actual letter hidden.
+          gsap.set('.letter-panel', {
+            opacity: 1,
+            y: 0,
+            clearProps: 'clipPath,filter,transform',
+          })
+          gsap.set('.letter-copy, .letter-paragraph, .letter-top, .signature-block', {
+            opacity: 1,
+            y: 0,
+            filter: 'none',
+            visibility: 'visible',
+          })
 
           gsap.fromTo(
             '.ending-phoenix-word',
@@ -1601,6 +1628,14 @@ export function AbiExperience() {
       ref={stageRef}
       className="abi-experience"
     >
+      <audio
+        ref={audioRef}
+        src={BACKGROUND_AUDIO_PATH}
+        autoPlay
+        loop
+        preload="auto"
+      />
+
       {/* ===================================================
           INTRO / MEMORY PORTAL
       =================================================== */}
@@ -1922,6 +1957,8 @@ export function AbiExperience() {
                   </strong>
                 </p>
               </div>
+            
+              {renderMemoryCard(2)}
             </section>
 
             {/* =================================================
@@ -1949,91 +1986,9 @@ export function AbiExperience() {
                 </p>
               </div>
 
-              <div className="memory-stack">
-                {memories.map(
-                  (
-                    memory,
-                    index,
-                  ) => (
-                    <article
-                      className={`memory-card memory-card-${index + 1} ${
-                        activeMemory ===
-                        index
-                          ? 'is-active'
-                          : ''
-                      }`}
-                      key={
-                        memory.image
-                      }
-                    >
-                      <div className="memory-image">
-                        <div className="memory-glow" />
-
-                        <img
-                          src={
-                            memory.image
-                          }
-                          alt=""
-                          onError={(
-                            event,
-                          ) => {
-                            event.currentTarget.style.display =
-                              'none'
-                          }}
-                        />
-
-                        <div className="photo-placeholder">
-                          <span>
-                            PHOTO{' '}
-                            {String(
-                              index +
-                                1,
-                            ).padStart(
-                              2,
-                              '0',
-                            )}
-                          </span>
-
-                          <small>
-                            Place your
-                            memory here
-                          </small>
-                        </div>
-
-                        <div className="photo-number">
-                          0
-                          {index +
-                            1}
-                        </div>
-                      </div>
-
-                      <div className="memory-caption">
-                        <span>
-                          MEMORY{' '}
-                          {String(
-                            index +
-                              1,
-                          ).padStart(
-                            2,
-                            '0',
-                          )}
-                        </span>
-
-                        <p>
-                          {
-                            memory.caption
-                          }
-                        </p>
-
-                        <small>
-                          {
-                            memory.detail
-                          }
-                        </small>
-                      </div>
-                    </article>
-                  ),
-                )}
+              <div className="memory-stack memory-stack-pair">
+                {renderMemoryCard(0)}
+                {renderMemoryCard(1)}
               </div>
             </section>
 
@@ -2109,6 +2064,8 @@ export function AbiExperience() {
                   </strong>
                 </p>
               </div>
+            
+              {renderMemoryCard(3)}
             </section>
 
             {/* =================================================
@@ -2182,6 +2139,8 @@ export function AbiExperience() {
                   menjadi kita.
                 </div>
               </div>
+            
+              {renderMemoryCard(4)}
             </section>
 
             {/* =================================================
@@ -2312,6 +2271,8 @@ export function AbiExperience() {
                   </div>
                 </div>
               </div>
+            
+              {renderMemoryCard(5)}
             </section>
 
             {/* =================================================
@@ -2413,6 +2374,8 @@ export function AbiExperience() {
                   hingga sekarang.
                 </p>
               </div>
+            
+              {renderMemoryCard(6)}
             </section>
 
             {/* =================================================
@@ -2472,6 +2435,8 @@ export function AbiExperience() {
                   </strong>
                 </div>
               </div>
+            
+              {renderMemoryCard(7)}
             </section>
 
             {/* =================================================
@@ -2532,6 +2497,8 @@ export function AbiExperience() {
                   bayang-bayang traumaku.
                 </p>
               </div>
+            
+              {renderMemoryCard(8)}
             </section>
 
             {/* =================================================
@@ -2599,6 +2566,8 @@ export function AbiExperience() {
                   cerita yang pernah ada.
                 </p>
               </div>
+            
+              {renderMemoryCard(9)}
             </section>
 
             {/* =================================================
@@ -2802,6 +2771,298 @@ export function AbiExperience() {
                   </div>
                 </div>
               </div>
+            
+              {renderMemoryCard(10)}
+            </section>
+
+
+            {/* =================================================
+                PHOENIX BOOK — THE WORDS I NEED YOU TO KEEP
+            ================================================= */}
+                        {/* =================================================
+                PHOENIX HISTORICAL MAGIC BOOK — INTERACTIVE CHAPTERS
+            ================================================= */}
+            <section className="scene phoenix-book-scene" aria-label="Phoenix memory book">
+              <div className="phoenix-book-ambient" aria-hidden="true"><span /><span /><span /></div>
+              <header className="phoenix-book-intro">
+                <span className="book-overline">THE EMBER CHRONICLES · A BOOK FOR ABI</span>
+                <h2>Some bonds are<br /><em>written in fire.</em></h2>
+                <p>Sembilan bab dalam sebuah buku kenangan: surat, foto, dan cerita yang kusimpan untukmu. Balik halamannya perlahan; setiap lembar menyimpan bagian dari perjalanan kita.</p>
+                <div className="book-flourish"><span /><b>✦</b><span /></div>
+              </header>
+              <div className="phoenix-book-layout">
+                <div className="phoenix-book-orbit" aria-hidden="true"><div className="phoenix-book-orbit-ring"/><div className="phoenix-book-orbit-caption">REBIRTH · COURAGE · FORGIVENESS</div></div>
+                <div className="phoenix-book-shell">
+                  <div className="phoenix-book-cover-edge" aria-hidden="true" />
+                  <div className="phoenix-book-spread" key={activePhoenixChapter}>
+                    {activePhoenixChapter === 0 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER I</span><span>01 / YOUR WORTH</span></div>
+                          <p className="book-page-kicker">PLEASE SEE YOURSELF THROUGH MY EYES</p>
+                          <h3>Kamu lebih mampu<br /><em>dari yang kamu kira.</em></h3>
+                      <p>aku tau kamu seringkali rendah diri,,,kamu sering kali menganggap kamu itu ga mampu dan harus mengandalkan orang lain,, TAPI AKU AKAN MEBANTAH MENTAH MENTAH HAL ITU KALO ADA ORANG LAIN YG BILANG KAMU KAYAK GITU,, kamu punya bakat, kamu punya keahlian,, kamu mampu mengimbangiku dalam segala hal,, aku ga pernah merasakan sedikit pun kalo kamu itu memanfaatkan atau beban untuk diriku,,, malah aku sangat sangat bersyukur kamu hadir dihidupku,, kalo bisa diibaratkan tu kamu kayak secercah cahaya api yg memberikanku semangat.</p>
+                      <p>dari banyak nya semua orang, bahkan temanku, meski kamu kubilang mirip teman baikku saat smp, tapi bagiku,,,kamu jauh jauh luar biasa diatas dia, bahkan jauh diatas dandy.. kamu punya segalanya yg bisa bikin aku seterbuka itu ke kamu. kemampuan kamu sekalipun, mungkin iya kalo dibilang kamu harus dituntun... tapi..... sekalinya kamu dituntun kamu mampu melampaui perkiraanku,,kadang aku iri kayak gimana ya bisa jadi kayak kamu,,,jujur saja <strong>aku saat berdiri disampingmu, aku selalu minder</strong>,, baik dari segi visual, segi atitude, segi apapun itu...aku selalu kagum ,,,"anjir ni orang kok bisa kayak gini, kapan ya aku bisa kayak dia, bisa ga ya aku kayak dia bisa menikmati momen dimanapun kapanpun dan sama siapapun,, kayak anjir dia bisa disukai banyak orang, ga cewek ga cowok banyak yg suka vibesnya,, beda banget ama aku".</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-1">
+                            <img src={bookMemories[0].image} alt={bookMemories[0].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 01</span><strong>{bookMemories[0].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>YOU ARE NOT A BURDEN</span><span>✦ 01</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>01 / 06</span></div>
+                      <p>Saking luar biasanya kamu aku sering banget gabisa berkata kata, cuma bisa bilang ke tuhan kalo ini adalah jalan terbaik darinya aku bisa dipertemukan dengan orang kayak kamu... kalo bagi kamu kamu berdoa bertemu dengan orang kayak sahabatmu sebelum masuk kuliah dan akhirnya kita ketemu,, justru aku sebaliknya,, aku merasa bahwa pertemuan yg ditakdirkan tuhan ini adalah <strong>HADIAH TERINDAH BAGIKU</strong>,,aku ga pernah nyesel ketolak kampus top kalo bisa ketemu orang kayak kamu ini...justru aku bersyukur bisa kuliah disini dan bertemu kamu.</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-2">
+                            <img src={bookMemories[1].image} alt={bookMemories[1].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 02</span><strong>{bookMemories[1].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>YOU ARE NOT A BURDEN</span><span>✦ 02</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 1 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER II</span><span>02 / KEEP TALKING</span></div>
+                          <p className="book-page-kicker">A PROMISE BETWEEN US</p>
+                          <h3>Jangan berhenti<br /><em>bercerita.</em></h3>
+                      <p>aku tau kkamu memikirkan hal yg sama, cuma memang kita gabisa ngomong secra langsung dihari itu,,pasti kita bakalan terbuka saat ada momen... tapii......karena skrg juga udah gabisa ketemu,,,ayo berjanji,,,,,tetaplah saling terbuka saling cerita entah baik buruk sepele atau hal besar, curhat tentang hal apapun itu,,,<strong>HUBUNGI AKU</strong>...aku akan selalu menantikan cerita cerita darimu.</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-3">
+                            <img src={bookMemories[2].image} alt={bookMemories[2].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 03</span><strong>{bookMemories[2].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>MY DOOR WILL STAY OPEN</span><span>✦ 03</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>02 / 06</span></div>
+                      <p>aku selalu bertanya : kapan ya kita bisa ketemu lagi? apa bisa kita ketemu?...dengan memperhatikan kondisiku aku selalu berdoa setiap saat "ya allah, dia ini orang paling baik dari semua orang yg ku kenal selama ini, jujur saja ya allah, aku pingin bisa di sampingnya kayak saudara saudara nya yg lain yg kelihatan akrab banget,, dibilang ga iri itu munafik bagiku, kayak knp baru kuliah ini aku bisa ketemu sosok kayak dia,, kalo diperbolehkan pun aku mau mendukungnya dan memantau setiap perkembangannya. aku khawatir apa yg terjadi setelah kami wisuda dan berpisah,, dia sudah kayak adik bahkan sosok kakakku sendiri yg tidak pernah aku miliki, jadi aku sangat senang saat dia mau bercerita tentang semua hal darinya baik itu ttg masalah, hal baik, hubungan percintaannya, mau bergantung padaku aku sungguh senang,, karena dengan itu aku menganggap bahwa aku merasa dianggap dan dihargai sbg yg dipercayainya. aku berharap bisa lebih sering ketemu lagi nanti ya allah seperti saat masa kuliah ini..."</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-4">
+                            <img src={bookMemories[3].image} alt={bookMemories[3].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 04</span><strong>{bookMemories[3].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>MY DOOR WILL STAY OPEN</span><span>✦ 04</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 2 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER III</span><span>03 / FAMILY</span></div>
+                          <p className="book-page-kicker">MORE THAN A FRIENDSHIP</p>
+                          <h3>Inilah keluargaku.<br /><em>Dan aku bangga.</em></h3>
+                      <p>saking kamu berdampak besar kehidupku,,,aku selalu berpikir dan mau melakukan kayak bayu...aku ingin memperkenalkan mu ke semua orang yg ku kenal atau orang asing dengan bilang kalo " INILOH SODARAKU/ADIKKU/KAKAKKU...KENALIN NIH...DIA KELUARGAKU" aku ingin menyebut itu dengan bangga kayak bayu ngenalin aku dan kamu ke temen temennya dengan sebutan saudara,,,bukan teman atau sahabat aja...<strong>AKU BANGGA ADA DIA DIHIDUPKU</strong>,,kesuksesanmu adalah kebanggaanku,,kegagalanmu adalah kesedihanku, aku ingin banget mengenalkan mu kayak gitu, ana pernah cerita kalo bayu cerita kedia dan dia bangga banget ngelihat ada video kita yg FYP,,,dia selalu memamerkannya dengan bangga,,,,<strong>AKU JUGA INGIN BANGET MELAKUKAN HAL ITU</strong>,,jujur tp aku takut kamu merasa risih</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-5">
+                            <img src={bookMemories[4].image} alt={bookMemories[4].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 05</span><strong>{bookMemories[4].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>NOT JUST A FRIEND — FAMILY</span><span>✦ 05</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>03 / 06</span></div>
+                      <p>aku selalu selalu dan selalu menghawatirkan hal yang sama kayak bayu,, bisa ga ya habis ini tetap saling komunikasi dimana kamu tipe yg males ngabarin hal hal remeh,, apa yg terjadi setelah ini?? apa skenario terburuk yg bakal terjadi?? apakah setelah ini aku bisa menghadapi masa masa sulitku sendiri? yang mana waktu aku merasa sulit tp kamu di sampingku ,,sedangkan skrg sudah tidak lagi.</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-6">
+                            <img src={bookMemories[5].image} alt={bookMemories[5].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 06</span><strong>{bookMemories[5].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>NOT JUST A FRIEND — FAMILY</span><span>✦ 06</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 3 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER IV</span><span>04 / MY PRAYER</span></div>
+                          <p className="book-page-kicker">FOR THE LIFE AHEAD OF YOU</p>
+                          <h3>Percayalah pada dirimu<br /><em>seperti aku percaya padamu.</em></h3>
+                      <p>aku tau kamu punya mimpi besar yang ga sejalan dg pemikiran orang tuamu,, tp percayalah,,,ambillah kesempatan yg diberikan,, ga semua orang bisa mendapatkan kesempatan kayak kamu. jangan terpaku pada hobby mu,, jangan sampai itu merusak dirimu,, jangan pernah mencoba coba suatu hal yg udah tau negatif,, awal dari kesengsaraan yatu karna coba coba hal buruk yg akhirnya ketagihan. aku percaya kamu mampu menjadi sosok yg luar biasa. aku yakin kamu mampu untuk melanjutkan studimu...<strong>PERCAYA PADA DIRIMU SENDIRI SEPERTI AKU SELALU MEMPERCAYAIMU</strong>... kuatkan tekadmu sekarang,, in this economy ga semua hal mudah,,jadi saat ada kesempatan ambillah</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-7">
+                            <img src={bookMemories[6].image} alt={bookMemories[6].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 07</span><strong>{bookMemories[6].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>I BELIEVE IN YOU</span><span>✦ 07</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>04 / 08</span></div>
+                      <p><strong>SEKALI LAGI AKU INGIN BISA BERSAMA MELIHAT PERKEMBANGAN BESARMU. BUKAN SEBAGAI TEMAN ATAU SAHABAT, TAPI SEBAGAI KELUARGAMU, ADIKMU, KAKAKMU</strong></p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-8">
+                            <img src={bookMemories[7].image} alt={bookMemories[7].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 08</span><strong>{bookMemories[7].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>I BELIEVE IN YOU</span><span>✦ 08</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 4 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER V</span><span>05 / FORGIVENESS</span></div>
+                          <p className="book-page-kicker">THE SYMBOL I SEE IN YOU</p>
+                          <h3>A heart that understands.<br /><em>A spirit made of fire.</em></h3>
+                      <p>kalo bisa diibaratkan,, kamu itu bagaikan simbol FORGIVENESS,,, why?? kamu mampu melihat sisi orang lain dari sudut pandang berbeda, kamu sangat lapang dada lebih dari yg kamu kira, kamu selalu mampu memberi arahan terbaik yg mungkin tidak kamu sadari, simbol api sendiri bagiku itu kamu, kayak jiwamu itu penuh kobaran untuk mencoba banyak hal,,tp kadang ada masa agak redup karena keraguan</p>
+                      <p><strong>LAKUKAN YG TERBAIK YG BISA KAMU LAKUKAN DAN JANGAN LUPAKAN AKU</strong></p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-9">
+                            <img src={bookMemories[8].image} alt={bookMemories[8].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 09</span><strong>{bookMemories[8].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>LET YOUR FIRE RETURN</span><span>✦ 09</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>05 / 08</span></div>
+                      <p><strong>INI SEHARUSNYA BUKAN PERPISAHAN TAPI MOMEN UNTUK MEMPERSIAPKAN DIRI UNTUK BERTEMU KEMBALI DENGAN VERIS TERBAIK</strong></p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-10">
+                            <img src={bookMemories[9].image} alt={bookMemories[9].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 10</span><strong>{bookMemories[9].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>LET YOUR FIRE RETURN</span><span>✦ 10</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 5 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER VI</span><span>06 / YOUR HOME</span></div>
+                          <p className="book-page-kicker">YOU WILL ALWAYS HAVE A PLACE HERE</p>
+                          <h3>Jangan pernah lupa<br /><em>rumahmu.</em></h3>
+                      <p>jangan pernah lupa,,,kamu punya rumah dan keluarga di jawa timur, mojokerto,,,jangan pernah kamu lupakan itu</p>
+                      <div className="phoenix-memory-letter">
+                        <span className="phoenix-memory-letter-label">A MEMORY FROM YOUR FIRST VISIT</span>
+                        <p>kamu inget waktu pertama dateng ke rumah mjk?? sejujurnya waktu itu kondisi keluarga ku tidak baik baik saja, ibuku saki gabisa jualan, jujur waku iu aku ga punya uang mau ngajak kamu pergi jalan jalan juga bingung biaya,,,jadinya hanya muter muter sekitar rumah,, aku yakin kamu bosan, kamu ga betah...tp ya mo gimana lagi, aku ama keluargaku minta maaf ya,,ibuku sendiri juga pernah bilang kek <strong>ANDAI SAJA kondisi saat itu stabil dia pingin bnget menjamu mu jauh lebih baik dari itu</strong></p>
+                        <span className="phoenix-memory-letter-sign">A LITTLE MEMORY, KEPT WITH LOVE · MOJOKERTO</span>
+                      </div>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-11">
+                            <img src={bookMemories[10].image} alt={bookMemories[10].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 11</span><strong>{bookMemories[10].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>MOJOKERTO WILL REMEMBER YOU</span><span>✦ 11</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>06 / 08</span></div>
+                      <p>gelang yg kuberikan bukan sebatas gelang,,tapi sebagai simbol waktu kebersamaan kita yg ga terganti, simbol pengingat kita selalu ada bersama satu sama lain,,,bukan sebatas kenangan,,kamu tidak sendiri.</p>
+                    <div className="book-page-quote">KAMU TIDAK SENDIRI.</div>
+                          
+                          <figure className="phoenix-memory-photo phoenix-bracelet-photo" aria-label="Foto gelang kenangan">
+                            <img src={assetUrl('assets/01-abi/photos/bracelet.jpeg')} alt="Gelang kenangan yang diberikan untuk Abi" loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('bracelet-photo-missing') }} />
+                            <figcaption><span>A SMALL TOKEN, A BIG PROMISE</span><strong>Gelang ini menyimpan cerita tentang waktu yang pernah kita bagi.</strong></figcaption>
+                            <div className="bracelet-photo-placeholder" aria-hidden="true"><span>✦</span><strong>THE BRACELET</strong><small>YOUR PHOTO GOES HERE</small></div>
+                          </figure>
+<div className="book-page-footer"><span>MOJOKERTO WILL REMEMBER YOU</span><span>✦ 12</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 6 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER VII</span><span>07 / THE WORLD AWAITS</span></div>
+                          <p className="book-page-kicker">THE WISHLISTS WE STILL OWE OURSELVES</p>
+                          <h3>Masih ada dunia<br /><em>yang ingin kita lihat.</em></h3>
+                          <p>kira kira kapan ya bisa bertemu  secepatnya?? kapan bisa mewujudkan wishlist kita bisa pergi ke luar negri??</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-13">
+                            <img src={bookMemories[11].image} alt={bookMemories[11].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 13</span><strong>{bookMemories[11].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>THE WORLD IS STILL WAITING</span><span>✦ 13</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>07 / 08</span></div>
+                          <p>jujur selama ini aku bertanya apa itu teman? emang beneran ada yg bisa dianggap teman?? ternyata semua itu terjawab melebihi eskpektasiku setlah ketemu kamu, jujur saja setelah ini aku takut sendiri, gaada sosok yg bisa kuajak bicara semendalam iu kek ke kamu. dibilang sedih iu udah pasti,,banget malahan... kamu bahkan mengetahui sisi lain diriku jauh lebih dari orang lain,,bahkan jauh dari orang tuaku sendiri,, aku harap kamu dapat pengalaman baik selama ini, dan juga aku meminta maaf karena sudah merepotkanmu setiap waktu, malah aku yg merasa jadi beban mu selama ini. YOU'RE BEST PERSON.</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-14">
+                            <img src={bookMemories[12].image} alt={bookMemories[12].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 14</span><strong>{bookMemories[12].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>THANK YOU FOR BEING HERE</span><span>✦ 14</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 7 && (
+                      <div className="phoenix-chapter-spread">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER VIII</span><span>08 / EVERY MOMENT</span></div>
+                          <p className="book-page-kicker">YOUR FUTURE, YOUR FEELINGS, OUR FRIENDSHIP</p>
+                          <h3>Aku ingin ada<br /><em>di cerita hidupmu.</em></h3>
+                          <p>pernah ga sih kamu kepikiran kayak pingin pindah dari tempat asalmu,,kalo aku kan kamu udah tau pasti aku selalu ga betah dg rumahku, tapi aku penasaran dengan planmu kedepan dan apa yg kamu rasakan. aku ingin kamu bisa hadir disetiap momen indahku,begitupun sebaliknya..bukan untuk memberimu tekanan atau beban seperti selama ini, tp aku ingin kamu bisa merasakan kebahgian dan bangga seperti aku selalu bangga dengan adanya dirimu.</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-15">
+                            <img src={bookMemories[13].image} alt={bookMemories[13].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 15</span><strong>{bookMemories[13].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>NO PRESSURE, JUST A WISH</span><span>✦ 15</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>08 / 08</span></div>
+                          <div className="book-page-quote">SEMOGA KITA BISA BERTEMU LAGI.</div>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-16">
+                            <img src={bookMemories[14].image} alt={bookMemories[14].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 16</span><strong>{bookMemories[14].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>UNTIL OUR NEXT CHAPTER</span><span>✦ 16</span></div>
+                        </article>
+                      </div>
+                    )}
+                    {activePhoenixChapter === 8 && (
+                      <div className="phoenix-chapter-spread phoenix-chapter-nine">
+                        <article className="phoenix-open-page phoenix-open-page-left">
+                          <div className="book-page-top"><span>CHAPTER IX</span><span>09 / SAY SOMETHING, BROTHER</span></div>
+                          <p className="book-page-kicker">QUESTIONS I STILL WANT TO ASK YOU</p>
+                          <h3>Jangan menghilang<br /><em>kasih kabar, woeee.</em></h3>
+                          <p>ini hanya rasa penasaranku sih meski ku tahu kamu tipe gimana cuma plislah woeee kasih kabarlu anying balas chat...kek knp seolah aku doang yg selalu nanyain busettt. aku juga pingin tau...menurutmu enak tinggal di mana ya wkwk,,,kalo kamu ada plan kedepan mo menentap dimana??</p>
+                          <p>apapun ituuuuu ceritakannnnnn,, aku juga mau tauuu...kamu tau...ternyata selama ini dirumah ini (mjk) keluargaku juga diam diam berdoa untukmu,,unuk kesuksesanmu,, untuk kepribadian dan jalan hidupmu,,mereka benar benar menganggapmu anak mereka,,,di setiap perjalanan pulang,,mereka masih sempat menyebut namamu kayak gimana perjalanan mu ya, sampe mana,,selamat ga ya,,pintu ku pintu kami selalu terbuka lebar untukmu.</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-17">
+                            <img src={bookMemories[15].image} alt={bookMemories[15].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 17</span><strong>{bookMemories[15].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>OUR DOOR IS ALWAYS OPEN</span><span>✦ 17</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-right">
+                          <div className="book-page-top"><span>THE EMBER CHRONICLES</span><span>09 / 09</span></div>
+                          <p className="book-page-kicker">THE BROTHER I CHOOSE, AGAIN AND AGAIN</p>
+                          <h3>Saudara terbaikku<br /><em>sepanjang masa.</em></h3>
+                          <p>dulu aku memang sering bertanya ke kamu apa aku bagimu... dan kamu selalu menjawab dengan hal yang sama...sedangkan aku butuh waktu 2 tahun untuk mempercayai hal itu, dan skrg aku benar benar yakin,,,KAMU ADALAH SAUDARA TERBAIKKU SEPANJANG MASA BAIK DULU, SEKARANG MAUPUN  DIMASA DEPAN.</p>
+                          <p>sedih dan sepi rasanya, yg biasanya kita bareng terus,,, skrg langsung berpisah masing masing. mungkin ini hanya sementara. seidaknya jangan lupakan aku semudah itu,,</p>
+                          <div className="book-page-quote">JANGAN LUPAKAN AKU SEMUDAH ITU.</div>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-18">
+                            <img src={bookMemories[16].image} alt={bookMemories[16].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 18</span><strong>{bookMemories[16].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>NOT AN ENDING, JUST DISTANCE</span><span>✦ 18</span></div>
+                        </article>
+                        <article className="phoenix-open-page phoenix-open-page-left phoenix-chapter-nine-last-page">
+                          <div className="book-page-top"><span>CHAPTER IX · CONTINUED</span><span>THE WORDS I NEED YOU TO KNOW</span></div>
+                          <p>bi kamu tau ga si bi,,,malah harusnya aku tau yg bersyukur dan ga nyangka bisa deket ama kamu, kayak,,anjir beneran nih kia deket?? bukan aku doang yg ngerasa kan??? ya smoga emang bukan aku doang yg ngerasa sih....cuma yahhhh seperti yg kubilang waktu itu, KAMU ITU JALAN TAKDIR TERBAIK YG PERNAH DIBERIKAN TUHAN PADA KU YG BANYAK DOSA INI,,,BUKAN MALAH JADI BEBAN ATAU PARASIT SEPERTI YG KAMU BILANGGGG...MALAH AKUUUUUU YG PARASIT DIHIDUPMU ITU....kamu selalu bayangin kalo kuliah ini tanpa aku kamu hilang arah ??!!?? NOOOO BROTHER...justru aku tanpa kamu tanpa kenal kamu,,,bisa jadi udah gaada di dunia ini aku,,, eku berjalan dan bertahan sejauh ini juga berkat ada kamu...kamu selalu jadi tumpuanku selama ini,,,bayangin bang,,, hampir 4 tahun aku bergantung ke kamu,,,aku bukan siapa siapa bi, bukan orang yg disukai banyak orang, bukan pula pilihan orang, aku banyak insecurenya kalo sama kamu...selalu ga PEDE jujur saja...aku selalu pingin bisa sebanding dg mu, bisa mengimbangimu,,,tp selalu gagal...tp kamu masih mau membersamaiku samppai saat ini itu sebuah anugrah,, gada yg bisa disandingkan posisimu itu,,,kamu sudah berbua banyak hal tanpa kamu sadari dihidupku bahkan keluargaku.</p>
+                          <p>INTINYA KAMU ITU JAUHHHH LEBIHHHH HEBAT LEBIH DARI YANG KAMU KIRA,,MENURUTKU KAMU ITU PERFECT HUMAN</p>
+                          
+                          <figure className="phoenix-memory-photo phoenix-memory-photo-page-19">
+                            <img src={bookMemories[17].image} alt={bookMemories[17].caption} loading="lazy" onError={(event) => { event.currentTarget.closest('figure')?.classList.add('photo-missing') }} />
+                            <figcaption><span>MEMORY FRAGMENT 19</span><strong>{bookMemories[17].caption}</strong></figcaption>
+                          </figure>
+<div className="book-page-footer"><span>YOU ARE MY PERFECT HUMAN</span><span>✦ 19</span></div>
+                        </article>
+                      </div>
+                    )}
+                  </div>
+                  <div className="phoenix-book-navigation">
+                    <button type="button" className="phoenix-book-nav-button" onClick={() => setActivePhoenixChapter((chapter) => Math.max(0, chapter - 1))} disabled={activePhoenixChapter === 0} aria-label="Previous chapter">← <span>PREVIOUS</span></button>
+                    <div className="phoenix-book-progress" aria-live="polite"><span>CHAPTER {String(activePhoenixChapter + 1).padStart(2, '0')}</span><div>{['Your Worth', 'Keep Talking', 'Family', 'My Prayer', 'Forgiveness', 'Your Home', 'The World Awaits', 'Every Moment', 'Say Something, Brother'].map((title, index) => <button key={title} type="button" className={index === activePhoenixChapter ? 'active' : ''} onClick={() => setActivePhoenixChapter(index)} aria-label={`Open chapter ${index + 1}: ${title}`} />)}</div><small>{String(activePhoenixChapter + 1).padStart(2, '0')} / 09</small></div>
+                    <button type="button" className="phoenix-book-nav-button" onClick={() => setActivePhoenixChapter((chapter) => Math.min(8, chapter + 1))} disabled={activePhoenixChapter === 8} aria-label="Next chapter"><span>NEXT</span> →</button>
+                  </div>
+                </div>
+              </div>
+              <p className="phoenix-book-hint">Balik halaman untuk melanjutkan cerita · Di ponsel, setiap lembar tetap terasa seperti halaman buku kenangan.</p>
             </section>
 
             {/* =================================================
@@ -2869,6 +3130,8 @@ export function AbiExperience() {
                   FOR ABIDZAR AL-GIFFARI
                 </small>
               </div>
+            
+              {renderMemoryCard(11)}
             </section>
           </div>
         </>
@@ -3891,6 +4154,58 @@ export function AbiExperience() {
           flex-direction: column;
         }
 
+        .memory-stack-pair { display:flex; flex-direction:column; gap:38px; padding:18px 0 30px; }
+        .memory-inline-card { width:min(390px, 84vw); margin:30px 0 42px; }
+        .memory-inline-card:nth-child(odd) { margin-left:clamp(0px, 5vw, 70px); }
+        .memory-inline-card:nth-child(even) { margin-left:auto; margin-right:clamp(0px, 5vw, 70px); }
+        .memory-inline-card .memory-image { aspect-ratio:auto; min-height:0; padding:10px; background:#f6e6d0; border:1px solid rgba(255,185,139,.3); }
+        .memory-inline-card .memory-image img { position:relative; inset:auto; display:block; width:100%; height:auto; max-height:480px; object-fit:contain; }
+        .memory-inline-card .memory-glow { pointer-events:none; }
+        .memory-inline-card .memory-caption { padding:13px 4px 0; }
+        .memory-inline-card .memory-caption p { margin:8px 0; }
+        .memory-inline-card .memory-caption small { display:block; line-height:1.8; }
+
+        /* Outside the storybook: show clean, natural photos without a frame,
+           colored panel, shadow, or text layered over the image itself. */
+        .memory-inline-card .memory-image,
+        .memory-card .memory-image {
+          aspect-ratio:auto !important;
+          min-height:0;
+          padding:0 !important;
+          overflow:visible;
+          border:0 !important;
+          border-radius:0;
+          background:transparent !important;
+          box-shadow:none !important;
+        }
+        .memory-inline-card .memory-image::after,
+        .memory-card .memory-image::after,
+        .memory-inline-card .memory-glow,
+        .memory-card .memory-glow,
+        .memory-inline-card .photo-placeholder,
+        .memory-card .photo-placeholder,
+        .memory-inline-card .photo-number,
+        .memory-card .photo-number { display:none !important; }
+        .memory-inline-card .memory-image img,
+        .memory-card .memory-image img {
+          position:relative;
+          inset:auto;
+          display:block;
+          width:100%;
+          height:auto;
+          max-height:620px;
+          object-fit:contain;
+          object-position:center;
+          border:0;
+          border-radius:0;
+          background:transparent;
+          box-shadow:none;
+          filter:none;
+          transform:none;
+        }
+        .memory-inline-card:hover .memory-image img,
+        .memory-card:hover .memory-image img { filter:none; transform:none; }
+
         .memory-card:nth-child(even) {
           margin-left: auto;
         }
@@ -3951,10 +4266,11 @@ export function AbiExperience() {
 
         .memory-image img {
           position: absolute;
-          inset: -8%;
-          width: 116%;
-          height: 116%;
-          object-fit: cover;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          object-position: center;
           filter:
             saturate(.82)
             contrast(1.05);
@@ -4736,6 +5052,39 @@ export function AbiExperience() {
           color: #ff9b73;
         }
 
+        /* LETTER VISIBILITY SAFETY NET
+           The letter is content, not a scroll-triggered decoration. */
+        .letter-section,
+        .letter-section .letter-panel,
+        .letter-section .letter-copy,
+        .letter-section .letter-top,
+        .letter-section .letter-paragraph,
+        .letter-section .signature-block {
+          visibility: visible !important;
+        }
+        .letter-section .letter-panel {
+          opacity: 1 !important;
+          clip-path: none !important;
+          transform: none !important;
+        }
+        .letter-section .letter-copy,
+        .letter-section .letter-top,
+        .letter-section .letter-paragraph,
+        .letter-section .signature-block {
+          opacity: 1 !important;
+          filter: none !important;
+          transform: none !important;
+        }
+        .letter-section .letter-paragraph {
+          position: relative;
+          z-index: 2;
+          color: rgba(255, 235, 226, .92);
+          overflow-wrap: anywhere;
+        }
+        .letter-section .letter-panel {
+          isolation: isolate;
+        }
+
         /* =====================================================
            ENDING
         ===================================================== */
@@ -5006,14 +5355,312 @@ export function AbiExperience() {
           }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          *,
-          *::before,
-          *::after {
-            animation-duration: .01ms !important;
-            animation-iteration-count: 1 !important;
-            scroll-behavior: auto !important;
+
+        /* =====================================================
+           PHOENIX HISTORICAL MAGIC BOOK — LARGE, READABLE SPREAD
+        ===================================================== */
+        .phoenix-book-scene {
+          display: block; isolation: isolate; overflow: hidden;
+          padding: clamp(64px, 7vh, 100px) clamp(14px, 3vw, 48px) 48px;
+          background: radial-gradient(ellipse at 50% 15%, rgba(255,104,31,.2), transparent 44%),
+            radial-gradient(ellipse at 90% 70%, rgba(126,24,9,.22), transparent 36%),
+            linear-gradient(180deg, rgba(8,4,3,.72), rgba(15,6,3,.91));
+        }
+        .phoenix-book-scene::before { content:""; position:absolute; inset:18px; border:1px solid rgba(255,176,93,.16); pointer-events:none; }
+        .phoenix-book-ambient { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:-1; }
+        .phoenix-book-ambient span { position:absolute; width:5px; height:5px; border-radius:50%; background:#ff9a4a; box-shadow:0 0 18px 5px rgba(255,80,20,.32); animation: phoenixEmberFloat 8s ease-in-out infinite; }
+        .phoenix-book-ambient span:nth-child(1){left:12%;top:30%;}.phoenix-book-ambient span:nth-child(2){right:13%;top:48%;animation-delay:-3s}.phoenix-book-ambient span:nth-child(3){left:28%;bottom:13%;animation-delay:-5s}
+        @keyframes phoenixEmberFloat {0%,100%{transform:translateY(0) scale(.8);opacity:.4}50%{transform:translateY(-36px) scale(1.4);opacity:1}}
+        .phoenix-book-intro { position:relative; z-index:2; text-align:center; margin:0 auto 32px; max-width:900px; }
+        .book-overline,.book-page-top,.book-page-kicker,.book-page-footer,.phoenix-book-progress small,.phoenix-book-progress>span { font-family:'Courier New',monospace; letter-spacing:.14em; text-transform:uppercase; }
+        .book-overline { color:#ffbd7d; font-size:clamp(9px,1vw,12px); }
+        .phoenix-book-intro h2 { margin:14px 0 12px; color:#fff0d9; font:400 clamp(34px,4.5vw,60px)/.98 Georgia,'Times New Roman',serif; letter-spacing:-.04em; }
+        .phoenix-book-intro h2 em { color:#ff9a48; font-weight:400; }
+        .phoenix-book-intro>p { margin:0 auto; max-width:580px; color:rgba(255,231,207,.78); font:14px/1.7 Georgia,serif; }
+        .book-flourish { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:17px; color:#ffb56c; }
+        .book-flourish span { width:55px; height:1px; background:linear-gradient(90deg,transparent,rgba(255,170,91,.8)); }.book-flourish span:last-child{transform:rotate(180deg)}
+        .phoenix-book-layout { position:relative; width:min(1420px,100%); margin:0 auto; perspective:1800px; }
+        .phoenix-book-orbit { position:absolute; right:-3%; top:-42px; width:clamp(140px,18vw,250px); aspect-ratio:1; border-radius:50%; pointer-events:none; z-index:0; opacity:.9; display:grid; place-items:center; }
+        .phoenix-book-orbit-ring { position:absolute; inset:4%; border:1px solid rgba(255,144,66,.24); border-radius:50%; box-shadow:0 0 40px rgba(255,73,19,.14),inset 0 0 32px rgba(255,102,35,.08); animation:phoenixOrbit 28s linear infinite; }
+        .phoenix-book-orbit-ring::before,.phoenix-book-orbit-ring::after{content:'✦';position:absolute;color:#ffb45f;font-size:14px}.phoenix-book-orbit-ring::before{left:8%;top:25%}.phoenix-book-orbit-ring::after{right:9%;bottom:21%}
+        @keyframes phoenixOrbit{to{transform:rotate(360deg)}}
+        .phoenix-book-orbit-caption { position:absolute; bottom:-4px; width:100%; color:rgba(255,190,132,.55); font:8px/1.4 'Courier New',monospace; letter-spacing:.16em; text-align:center; }
+        .phoenix-book-shell { position:relative; z-index:1; width:100%; padding:clamp(10px,1.4vw,20px); border:1px solid rgba(255,174,94,.44); border-radius:8px; background:linear-gradient(115deg,#32180f,#180906 12%,#4b2514 49.5%,#180805 51%,#3b1b10); box-shadow:0 34px 90px rgba(0,0,0,.58),0 0 60px rgba(255,77,24,.11),inset 0 0 0 3px rgba(255,206,139,.06); }
+        .phoenix-book-cover-edge { position:absolute; inset:5px; border:1px solid rgba(255,203,128,.22); pointer-events:none; z-index:3; border-radius:4px; }
+        .phoenix-book-spread { position:relative; min-height:clamp(570px,68vh,760px); transform-style:preserve-3d; animation:phoenixPageReveal .5s cubic-bezier(.2,.7,.2,1) both; }
+        @keyframes phoenixPageReveal {from{opacity:.35;transform:rotateY(-2deg) translateY(8px)}to{opacity:1;transform:rotateY(0) translateY(0)}}
+        .phoenix-chapter-spread { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-height:inherit; position:relative; }
+        .phoenix-chapter-spread::after { content:""; position:absolute; left:50%; top:0; bottom:0; width:24px; transform:translateX(-50%); background:linear-gradient(90deg,rgba(83,38,16,.15),rgba(91,44,20,.36),rgba(255,249,219,.16),rgba(78,33,15,.3)); pointer-events:none; }
+        .phoenix-open-page { position:relative; min-width:0; min-height:clamp(570px,68vh,760px); overflow:visible; padding:clamp(30px,3.2vw,54px) clamp(28px,4vw,64px) 32px; overflow:hidden; color:#412519; background:radial-gradient(ellipse at 0 0,rgba(255,255,255,.8),transparent 42%),radial-gradient(ellipse at 100% 100%,rgba(166,83,36,.11),transparent 40%),repeating-linear-gradient(0deg,rgba(96,46,22,.025) 0,rgba(96,46,22,.025) 1px,transparent 1px,transparent 4px),linear-gradient(135deg,#f9edd5,#ecd5ad 65%,#f5e2bf); box-shadow:inset 0 0 0 1px rgba(130,73,37,.22),inset 0 0 0 8px rgba(255,249,224,.2); }
+        .phoenix-open-page-left { border-radius:3px 0 0 3px; box-shadow:inset -16px 0 22px rgba(83,38,16,.1),inset 0 0 0 1px rgba(130,73,37,.2); }
+        .phoenix-open-page-right { border-radius:0 3px 3px 0; box-shadow:inset 16px 0 22px rgba(83,38,16,.1),inset 0 0 0 1px rgba(130,73,37,.2); }
+        .phoenix-open-page::before { content:""; position:absolute; inset:14px; border:1px solid rgba(126,58,24,.16); pointer-events:none; }
+        .book-page-top,.book-page-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#8a4b2b; font-size:clamp(8px,.7vw,10px); line-height:1.6; }
+        .book-page-top { padding-bottom:15px; margin-bottom:25px; border-bottom:1px solid rgba(115,58,28,.25); }
+        .book-page-kicker { margin:0 0 12px; color:#a14b25; font-size:clamp(9px,.8vw,11px); font-weight:700; }
+        .phoenix-open-page h3 { position:relative; margin:0 0 25px; color:#36180f; font:400 clamp(29px,3.1vw,45px)/1.1 Georgia,'Times New Roman',serif; letter-spacing:-.04em; }
+        .phoenix-open-page h3 em { color:#a8411b; font-weight:400; }
+        .phoenix-open-page p:not(.book-page-kicker) { position:relative; margin:0 0 19px; color:#4c3024; font:clamp(14px,1.12vw,16px)/1.85 Georgia,'Times New Roman',serif; overflow-wrap:anywhere; }
+        .phoenix-open-page p strong { color:#8c2f15; font-weight:700; }
+        .book-page-footer { margin-top:auto; padding-top:18px; border-top:1px solid rgba(115,58,28,.25); font-size:8px; }
+        .phoenix-open-page { display:flex; flex-direction:column; }
+        .phoenix-memory-photo { width:min(76%,330px); margin:18px auto 10px; padding:9px 9px 15px; background:#fff8e8; box-shadow:0 9px 25px rgba(66,30,14,.22); transform:rotate(1.5deg); position:relative; z-index:1; }
+        .phoenix-memory-photo img { display:block; width:100%; height:auto; max-height: min(58vh, 620px); aspect-ratio:auto; object-fit:contain; object-position:center; background:#d7b68d; filter:sepia(.12) saturate(.9); }
+        .phoenix-memory-photo.photo-missing { display:none; }
+        .phoenix-bracelet-photo { min-height:210px; position:relative; }
+        .phoenix-bracelet-photo .bracelet-photo-placeholder { display:none; }
+        .phoenix-bracelet-photo.bracelet-photo-missing img { display:none; }
+        .phoenix-bracelet-photo.bracelet-photo-missing .bracelet-photo-placeholder { min-height:150px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:#8f3c20; background:radial-gradient(circle at 50% 45%,rgba(255,193,91,.5),transparent 55%),linear-gradient(135deg,#f5dfb3,#e8c38b); border:1px dashed #ad713a; }
+        .bracelet-photo-placeholder span { font-size:30px; color:#b55a22; }
+        .bracelet-photo-placeholder strong { font: bold 13px Georgia,serif; letter-spacing:.16em; }
+        .bracelet-photo-placeholder small { font:9px 'Courier New',monospace; letter-spacing:.1em; }
+        .phoenix-chapter-nine { align-items:stretch; }
+        .phoenix-chapter-nine .phoenix-open-page { overflow-y:auto; max-height: min(72vh, 850px); }
+        .phoenix-chapter-nine .phoenix-open-page p { font-size:clamp(13px,1vw,16px); line-height:1.8; overflow-wrap:anywhere; }
+        .phoenix-chapter-nine-last-page { grid-column:1 / -1; width:min(100%,900px); justify-self:center; }
+        @media (max-width: 720px) {
+          .phoenix-chapter-nine { display:flex; flex-direction:column; }
+          .phoenix-chapter-nine .phoenix-open-page { width:100%; max-height:none; overflow:visible; }
+          .phoenix-chapter-nine-last-page { width:100%; }
+          .phoenix-bracelet-photo { width:min(92%,320px); }
+        }
+        .phoenix-memory-photo { animation: phoenixPhotoArrive .8s cubic-bezier(.18,.8,.22,1) both; transition:transform .45s ease, box-shadow .45s ease; }
+        .phoenix-memory-photo:hover { transform:rotate(0deg) translateY(-5px) scale(1.025); box-shadow:0 18px 38px rgba(66,30,14,.32),0 0 24px rgba(255,128,47,.16); }
+        @keyframes phoenixPhotoArrive { from { opacity:0; transform:translateY(18px) rotate(-5deg) scale(.96); filter:blur(4px); } to { opacity:1; transform:translateY(0) rotate(1.5deg) scale(1); filter:blur(0); } }
+        .phoenix-book-shell { animation:phoenixBookGlow 7s ease-in-out infinite; }
+        @keyframes phoenixBookGlow { 0%,100% { box-shadow:0 34px 90px rgba(0,0,0,.58),0 0 42px rgba(255,77,24,.09),inset 0 0 0 3px rgba(255,206,139,.06); } 50% { box-shadow:0 34px 90px rgba(0,0,0,.58),0 0 72px rgba(255,98,29,.2),inset 0 0 0 3px rgba(255,206,139,.1); } }
+        .phoenix-book-spread { transform-origin:50% 50%; }
+        .phoenix-book-spread::after { content:'✦'; position:absolute; z-index:5; left:50%; top:50%; color:#ffb35c; font-size:clamp(24px,4vw,52px); text-shadow:0 0 12px #ff7a25,0 0 34px #ff4a19; pointer-events:none; opacity:0; animation:phoenixPageSpark .72s ease-out both; }
+        @keyframes phoenixPageSpark { 0% { opacity:0; transform:translate(-50%,-50%) scale(.2) rotate(0); } 25% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-50%) scale(2.6) rotate(130deg); } }
+        .phoenix-memory-photo figcaption { display:flex; flex-direction:column; gap:6px; padding:9px 4px 0; color:#5b3825; font-family:Georgia,serif; }
+        .phoenix-memory-photo figcaption span { font:8px 'Courier New',monospace; letter-spacing:.12em; color:#a14b25; }
+        .phoenix-memory-photo figcaption strong { font-size:12px; line-height:1.45; font-weight:400; }
+        .book-page-quote { margin:16px 0; padding:17px 10px; border-top:1px solid rgba(151,62,25,.35); border-bottom:1px solid rgba(151,62,25,.35); color:#922f12; font:clamp(17px,1.7vw,23px)/1.35 Georgia,serif; letter-spacing:.06em; text-align:center; }
+        .phoenix-book-navigation { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:22px clamp(10px,2vw,30px) 12px; color:#ffdeb8; }
+        .phoenix-book-nav-button { display:flex; align-items:center; gap:10px; border:1px solid rgba(255,179,104,.36); border-radius:3px; background:rgba(25,9,5,.5); padding:12px 16px; color:#ffe2c2; font:10px 'Courier New',monospace; letter-spacing:.12em; cursor:pointer; transition:background .2s,transform .2s,border-color .2s; }
+        .phoenix-book-nav-button:hover:not(:disabled) { background:rgba(255,107,39,.17); border-color:#ff9a48; transform:translateY(-2px); }
+        .phoenix-book-nav-button:disabled { opacity:.32; cursor:not-allowed; }
+        .phoenix-book-progress { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:9px; flex:1; }
+        .phoenix-book-progress>span { color:#ffb56c; font-size:9px; }
+        .phoenix-book-progress div { display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
+        .phoenix-book-progress div button { width:7px; height:7px; border:1px solid rgba(255,189,125,.65); border-radius:50%; padding:0; background:transparent; cursor:pointer; }
+        .phoenix-book-progress div button.active { background:#ff9a48; box-shadow:0 0 12px rgba(255,109,35,.7); transform:scale(1.3); }
+        .phoenix-book-progress small { color:rgba(255,222,184,.6); font-size:8px; }
+        .phoenix-book-hint { text-align:center; color:rgba(255,221,191,.6); font:11px/1.6 'Courier New',monospace; letter-spacing:.04em; margin:20px auto 0; max-width:700px; }
+        @media (max-width:900px) {
+          .phoenix-book-scene { padding:70px 12px 34px; }
+          .phoenix-book-intro { margin-bottom:22px; }
+          .phoenix-book-orbit { right:-20px; top:-15px; width:130px; opacity:.42; }
+          .phoenix-book-shell { padding:8px; }
+          .phoenix-open-page { padding:30px 26px 24px; }
+          .phoenix-open-page p:not(.book-page-kicker) { font-size:14px; line-height:1.78; }
+          .phoenix-book-spread,.phoenix-open-page { min-height:610px; }
+        }
+        @media (max-width:640px) {
+          .phoenix-book-scene { padding:56px 9px 30px; }
+          .phoenix-book-scene::before { inset:8px; }
+          .phoenix-book-intro h2 { font-size:clamp(32px,9vw,44px); }
+          .phoenix-book-intro>p { font-size:13px; padding:0 8px; }
+          .phoenix-book-orbit { width:94px; right:-24px; top:0; opacity:.25; }
+          .phoenix-book-orbit-caption { font-size:6px; }
+          .phoenix-book-shell { padding:6px; border-radius:5px; }
+          .phoenix-book-spread { min-height:0; }
+          .phoenix-chapter-spread { display:block; min-height:0; }
+          .phoenix-chapter-spread::after { display:none; }
+          .phoenix-open-page { min-height:0; padding:29px 24px 24px; border-radius:2px; }
+          .phoenix-open-page-left { display:flex; border-radius:3px 3px 0 0; }
+          .phoenix-open-page-left .book-page-top { margin-bottom:20px; }
+          .phoenix-open-page-left .book-page-footer { display:flex; }
+          .phoenix-open-page-right { border-top:1px solid rgba(125,65,31,.28); border-radius:0 0 3px 3px; box-shadow:inset 0 12px 18px rgba(83,38,16,.06),inset 0 0 0 1px rgba(130,73,37,.2); }
+          .phoenix-open-page-right .book-page-top { margin-bottom:20px; }
+          .phoenix-open-page h3 { font-size:clamp(28px,8vw,36px); }
+          .phoenix-open-page p:not(.book-page-kicker) { font-size:15px; line-height:1.82; margin-bottom:18px; }
+          .phoenix-memory-photo { width:min(86%,320px); }
+          .phoenix-book-navigation { gap:7px; padding:14px 2px 7px; }
+          .phoenix-book-nav-button { padding:11px 9px; font-size:9px; gap:5px; }
+          .phoenix-book-nav-button span { font-size:8px; }
+          .phoenix-book-progress { gap:7px; }
+          .phoenix-book-progress>span { font-size:8px; }
+          .phoenix-book-progress div { gap:5px; }
+          .phoenix-book-progress div button { width:6px; height:6px; }
+          .phoenix-book-hint { font-size:9px; padding:0 10px; }
+        }
+        /* REAL PAPER-TURN FEEL: the spread opens like a physical book, not a flat card. */
+        .phoenix-book-layout { perspective:2200px; }
+        .phoenix-book-shell { transform-style:preserve-3d; }
+        .phoenix-book-spread { isolation:isolate; transform-origin:50% 50%; backface-visibility:visible; }
+        .phoenix-book-spread::before {
+          content:""; position:absolute; z-index:4; top:0; bottom:0; left:50%; width:50%; pointer-events:none;
+          transform-origin:left center; transform:rotateY(-180deg); backface-visibility:hidden;
+          background:linear-gradient(90deg,rgba(78,34,15,.14),rgba(255,248,224,.96) 9%,#f8ebd0 45%,#e9d0a7 100%);
+          box-shadow:-14px 0 28px rgba(40,15,5,.24),inset 12px 0 18px rgba(115,57,27,.15);
+          animation:phoenixPaperTurn .92s cubic-bezier(.22,.68,.15,1) both;
+        }
+        @keyframes phoenixPaperTurn {
+          0% { transform:rotateY(0deg); filter:brightness(.78); }
+          42% { filter:brightness(1.08); box-shadow:-28px 0 34px rgba(40,15,5,.3),inset 16px 0 22px rgba(115,57,27,.18); }
+          100% { transform:rotateY(-180deg); filter:brightness(1); opacity:0; }
+        }
+        .phoenix-open-page { backface-visibility:hidden; }
+        .phoenix-open-page::after { content:""; position:absolute; right:0; bottom:0; width:38px; height:38px; pointer-events:none; opacity:.5; background:linear-gradient(135deg,transparent 49%,rgba(130,78,38,.15) 50%,rgba(255,248,225,.8) 65%,rgba(163,105,56,.18) 100%); clip-path:polygon(100% 0,100% 100%,0 100%); }
+        .phoenix-open-page-left { box-shadow:inset -16px 0 22px rgba(83,38,16,.1),inset 0 0 0 1px rgba(130,73,37,.2),2px 0 0 rgba(130,73,37,.08); }
+        .phoenix-open-page-right { box-shadow:inset 16px 0 22px rgba(83,38,16,.1),inset 0 0 0 1px rgba(130,73,37,.2),-2px 0 0 rgba(130,73,37,.08); }
+        .phoenix-open-page > * { position:relative; z-index:1; }
+        .phoenix-open-page .book-page-footer { flex-shrink:0; }
+        .phoenix-open-page h3 { text-wrap:pretty; }
+        .phoenix-open-page p:not(.book-page-kicker) { text-wrap:pretty; }
+        @keyframes phoenixSinglePageTurn {
+          0% { opacity:.35; transform:perspective(900px) rotateY(-13deg) translateX(10px); filter:brightness(.82); }
+          55% { opacity:1; filter:brightness(1.05); }
+          100% { opacity:1; transform:perspective(900px) rotateY(0) translateX(0); filter:brightness(1); }
+        }
+        @media (max-width:640px) {
+          .phoenix-book-layout { perspective:1200px; }
+          .phoenix-book-shell { padding:7px; background:linear-gradient(100deg,#2a1109,#5a2a15 3%,#1a0905 9%,#3b1b0e 100%); }
+          .phoenix-book-spread { transform-origin:left center; }
+          .phoenix-book-spread::before { left:0; width:100%; transform-origin:left center; background:linear-gradient(90deg,#d4b58a 0%,#f8ecd2 7%,#f6e6c6 72%,#e5c79b 100%); animation-name:phoenixMobilePaperTurn; }
+          @keyframes phoenixMobilePaperTurn {
+            0% { transform:rotateY(0deg); opacity:1; box-shadow:8px 0 24px rgba(40,15,5,.35); }
+            55% { box-shadow:22px 0 30px rgba(40,15,5,.28); }
+            100% { transform:rotateY(-165deg); opacity:0; }
           }
+          .phoenix-chapter-spread { perspective:1000px; }
+          .phoenix-open-page { position:relative; margin:0; min-height:0; padding:clamp(24px,6vw,34px) clamp(19px,5.5vw,28px) 24px; border-radius:2px; transform-origin:left center; animation:phoenixSinglePageTurn .72s cubic-bezier(.2,.7,.2,1) both; box-shadow:inset 0 0 0 1px rgba(130,73,37,.25),inset 0 0 0 7px rgba(255,249,224,.24),0 3px 0 rgba(130,73,37,.15),0 7px 12px rgba(22,8,3,.16); }
+          .phoenix-open-page-left { border-radius:2px 2px 0 0; }
+          .phoenix-open-page-right { border-radius:0 0 2px 2px; animation-delay:.09s; }
+          .phoenix-open-page::before { inset:10px; }
+          .phoenix-open-page::after { width:27px; height:27px; }
+          .phoenix-open-page-left .book-page-footer { display:flex; }
+          .phoenix-open-page h3 { margin-bottom:19px; }
+          .phoenix-open-page p:not(.book-page-kicker) { font-size:clamp(14px,3.8vw,16px); line-height:1.76; margin-bottom:16px; }
+          .phoenix-memory-photo { width:min(90%,360px); }
+          .memory-inline-card { width:min(100%,390px); margin:26px auto 36px !important; }
+          .memory-inline-card .memory-image img { max-height:420px; }
+          .phoenix-chapter-nine .phoenix-open-page { max-height:none; overflow:visible; }
+          .phoenix-chapter-nine-last-page { width:100%; }
+        }
+        @media (min-width:641px) {
+          .phoenix-chapter-spread .phoenix-open-page { min-height:clamp(570px,68vh,760px); }
+          .phoenix-chapter-nine .phoenix-open-page { min-height:clamp(570px,68vh,760px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .phoenix-book-ambient span,.phoenix-book-orbit-ring,.phoenix-book-spread,.phoenix-book-spread::before,.phoenix-open-page { animation:none !important; }
+        }
+
+        /* HISTORICAL MEMORY BOOK: every story stays on paper, never clipped outside the page. */
+        .phoenix-book-scene { overflow:visible; }
+        .phoenix-book-layout { width:100%; max-width:1500px; margin-inline:auto; }
+        .phoenix-book-shell {
+          padding:clamp(9px,1.25vw,18px); border-radius:7px;
+          background:linear-gradient(90deg,#1a0804 0%,#64341b 2%,#291008 5%,#5a2c15 49.3%,#160704 50%,#603018 51%,#281008 96%,#100503 100%);
+          box-shadow:0 35px 95px rgba(0,0,0,.62),0 0 0 1px rgba(255,190,115,.5),inset 0 0 0 2px rgba(255,219,163,.12),inset 0 0 26px rgba(0,0,0,.45);
+        }
+        .phoenix-book-spread { min-height:0; }
+        .phoenix-chapter-spread { align-items:stretch; }
+        .phoenix-open-page {
+          box-sizing:border-box; min-height:clamp(620px,72vh,850px); height:auto; overflow:visible;
+          padding:clamp(32px,3.2vw,52px) clamp(30px,3.4vw,58px) 30px; background-color:#f4e4c4;
+          background-image:radial-gradient(ellipse at 12% 8%,rgba(255,255,255,.78),transparent 38%),radial-gradient(ellipse at 95% 92%,rgba(156,77,32,.13),transparent 38%),repeating-linear-gradient(0deg,rgba(108,66,35,.045) 0,rgba(108,66,35,.045) 1px,transparent 1px,transparent 28px),linear-gradient(135deg,#fbf0d8 0%,#f0ddb8 55%,#f6e7c9 100%);
+        }
+        .phoenix-open-page::before { inset:13px; border:1px solid rgba(126,58,24,.22); }
+        .phoenix-open-page::after { opacity:.72; }
+        .phoenix-open-page > * { flex-shrink:0; }
+        .phoenix-open-page { overflow:visible; }
+        .phoenix-open-page .book-page-top { margin-bottom:clamp(18px,2.1vw,28px); }
+        .phoenix-open-page .book-page-footer { margin-top:auto; padding-top:18px; }
+        .phoenix-open-page p:not(.book-page-kicker) { font-size:clamp(14px,1.05vw,16px); line-height:1.78; margin:0 0 17px; text-align:left; overflow-wrap:anywhere; hyphens:auto; }
+        .phoenix-open-page h3 { margin-bottom:20px; }
+        .phoenix-memory-photo { max-width:100%; }
+        .phoenix-memory-photo img { display:block; width:100%; height:auto; max-height:min(58vh,620px); aspect-ratio:auto; object-fit:contain; object-position:center; }
+        .phoenix-memory-letter { position:relative; margin:9px 0 17px; padding:17px 17px 14px; border:1px solid rgba(141,72,35,.32); background:linear-gradient(135deg,rgba(255,249,228,.76),rgba(225,194,145,.42)); box-shadow:inset 0 0 0 4px rgba(255,255,240,.28),0 5px 12px rgba(91,48,22,.08); }
+        .phoenix-memory-letter::before { content:'❧'; position:absolute; right:12px; top:5px; color:rgba(145,64,29,.58); font:25px Georgia,serif; }
+        .phoenix-memory-letter-label,.phoenix-memory-letter-sign { display:block; color:#9a4b27; font:8px/1.5 'Courier New',monospace; letter-spacing:.12em; }
+        .phoenix-memory-letter-label { padding-right:24px; margin-bottom:10px; }
+        .phoenix-memory-letter p { margin-bottom:10px !important; font-size:clamp(13px,.98vw,15px) !important; line-height:1.72 !important; }
+        .phoenix-memory-letter p strong { color:#8d3218; }
+        .phoenix-memory-letter-sign { padding-top:9px; border-top:1px solid rgba(145,64,29,.22); font-size:7px; }
+        .phoenix-chapter-nine .phoenix-open-page { max-height:none; overflow:visible; }
+        .phoenix-chapter-nine-last-page { grid-column:1 / -1; width:100%; max-width:none; }
+        .phoenix-book-navigation { max-width:100%; }
+        .phoenix-book-hint { max-width:760px; }
+        @media (min-width:641px) {
+          .phoenix-chapter-nine { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+          .phoenix-chapter-nine .phoenix-open-page { min-height:620px; }
+          .phoenix-chapter-nine-last-page { grid-column:1 / -1; min-height:520px !important; }
+          .phoenix-chapter-spread:not(.phoenix-chapter-nine) .phoenix-open-page { min-height:clamp(620px,72vh,850px); }
+        }
+        @media (max-width:640px) {
+          .phoenix-book-scene { padding:52px 8px 28px; }
+          .phoenix-book-scene::before { inset:7px; }
+          .phoenix-book-intro { padding:0 10px; }
+          .phoenix-book-intro h2 { line-height:1.02; }
+          .phoenix-book-shell { padding:6px; border-radius:5px; background:linear-gradient(90deg,#190704,#64341b 2%,#281008 7%,#4c2412 100%); }
+          .phoenix-book-spread { min-height:0; }
+          .phoenix-chapter-spread { display:block; }
+          .phoenix-open-page { min-height:0 !important; height:auto; padding:clamp(25px,6.4vw,34px) clamp(20px,5.3vw,27px) 25px; overflow:visible; background-image:radial-gradient(ellipse at 12% 8%,rgba(255,255,255,.72),transparent 38%),repeating-linear-gradient(0deg,rgba(108,66,35,.04) 0,rgba(108,66,35,.04) 1px,transparent 1px,transparent 26px),linear-gradient(135deg,#fbf0d8,#f0ddb8 60%,#f6e7c9); }
+          .phoenix-open-page-left,.phoenix-open-page-right { border-radius:2px; }
+          .phoenix-open-page-right { margin-top:0; border-top:2px solid rgba(125,65,31,.35); }
+          .phoenix-open-page .book-page-top { margin-bottom:20px; font-size:8px; }
+          .phoenix-open-page h3 { font-size:clamp(27px,7.7vw,35px); line-height:1.08; }
+          .phoenix-open-page p:not(.book-page-kicker) { font-size:15px; line-height:1.78; margin-bottom:17px; }
+          .phoenix-memory-letter { padding:15px 13px 12px; margin-top:10px; }
+          .phoenix-memory-letter p { font-size:14px !important; line-height:1.74 !important; }
+          .phoenix-memory-photo { width:min(100%,360px); }
+          .phoenix-book-navigation { flex-wrap:nowrap; gap:5px; padding:13px 0 6px; }
+          .phoenix-book-nav-button { padding:10px 7px; gap:4px; white-space:nowrap; }
+          .phoenix-book-progress div { gap:4px; }
+          .phoenix-book-progress div button { width:6px; height:6px; }
+          .phoenix-chapter-nine { display:block; }
+          .phoenix-chapter-nine-last-page { width:100%; }
+        }
+        /* Keep every personal photo fully visible: never crop the source image. */
+        .memory-image img,
+        .phoenix-memory-photo img,
+        .phoenix-bracelet-photo img {
+          object-fit: contain !important;
+          object-position: center !important;
+        }
+        .memory-image img { inset: 0 !important; width: 100% !important; height: 100% !important; object-fit: contain !important; object-position: center !important; }
+        .phoenix-memory-photo img,
+        .phoenix-bracelet-photo img { display: block; width: 100%; height: auto !important; max-height: min(58vh, 620px); aspect-ratio: auto; object-fit: contain !important; object-position: center !important; }
+
+        /* Storybook photographs stay visible inside their own text pages. */
+        .phoenix-memory-photo {
+          display: block;
+          width: min(78%, 310px);
+          max-width: 100%;
+          flex: 0 0 auto;
+          margin: 16px auto 12px;
+          align-self: center;
+        }
+        .phoenix-memory-photo img {
+          display: block;
+          width: 100%;
+          height: auto !important;
+          max-height: 280px;
+          aspect-ratio: auto;
+          object-fit: contain !important;
+          object-position: center !important;
+        }
+        .phoenix-memory-photo figcaption {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          padding-top: 8px;
+        }
+        .phoenix-memory-photo figcaption span {
+          font: 8px/1.4 'Courier New', monospace;
+          letter-spacing: .12em;
+          color: #9a4d27;
+        }
+        .phoenix-memory-photo figcaption strong {
+          font: 12px/1.45 Georgia, 'Times New Roman', serif;
+          font-weight: 400;
+          color: #593323;
+        }
+        @media (max-width: 640px) {
+          .phoenix-memory-photo { width: min(82%, 300px); margin: 13px auto 10px; }
+          .phoenix-memory-photo img { max-height: 250px; }
         }
       `}</style>
     </div>
